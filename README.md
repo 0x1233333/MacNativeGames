@@ -228,6 +228,17 @@ Version 1.4.3 has been played on an **iPhone 14 (iOS 26.6.1)** and an **iPad wit
 - **Shaders:** an iPhone or iPad cannot translate shaders while playing. A draw whose shader variant the app does not carry is skipped, so objects can be missing in places no player has reported yet. The device records what it missed in `shader-list-contribution.txt` (Files app › On My iPhone › Tears of the Kingdom); the game never asks about it during play. While the device is connected to the Mac that built the app (cable or the same Wi-Fi), the Mac checks every 10 minutes and every 500 new shaders asks once to send the file in a [GitHub issue](https://github.com/ly05010419/MacNativeGames/issues/new?template=shader-list.yml) (`games/totk/ios/tools/shader_contrib_watch.py`, installed by the iOS build; `--no-shader-reminder` skips it, `shader_contrib_watch.py uninstall` removes it). Once merged into the [shared shader list](docs/shader-list.md), the next build carries them for everyone. With a Mac, `games/totk/ios/tools/fill_shaders.py` also translates them and sends them to the device right away.
 - **Memory:** the game uses close to 4 GB on an iPhone 14, near what the phone can give it. In busy areas iOS can close the game after several minutes of play when the phone runs out of memory (seen twice on an iPhone 14, about 8 minutes in). Reducing the game's memory on iOS is the next piece of work.
 
+## This branch
+
+This is a personal build of the upstream port, kept in step with `main`. It carries four changes of its own on top:
+
+- **Xbox button icons on the HUD (build time).** `make -C games/totk romfs-patches PAD_ICONS=xbox` exchanges the four 72x72 face-button textures of the combined UI atlas in place, so the prompt drawn on the right shows **B**, at the bottom **A**, at the top **Y** and on the left **X** — where an Xbox pad puts them. The layout, the atlas and every offset stay unchanged and nothing is re-encoded. Without `PAD_ICONS=xbox` the overlay is byte-identical to upstream's.
+- **The shortcut panel (key 1) lists the whole keyboard mapping.** The game's prompts say A / B / X / Y and nothing says those are J / K / I / U on a Mac keyboard; the panel also states that there is no mouse support.
+- **Face buttons per controller family**, as a table (Xbox / PlayStation / Nintendo) instead of a two-way test, with the product category scanned before the vendor. An 8BitDo pad in Switch mode reports "Nintendo Switch Pro Controller" with vendor "8BitDo", which a one-pass match classifies as Xbox. `TOTK_FACE_BUTTONS=xbox|playstation|nintendo|position|label`.
+- **A guard before the border-colour shader is built from an unloaded fragment shader.** On the asynchronous shader path a shader may not be ready when a pipeline is resolved, and building the border variant from it dereferenced null.
+
+Measured here on a Mac mini M4 with 1.0.0: first frame after 5 ms, 113 fps, GPU 6.9 ms.
+
 ## Controls
 
 On Mac, controllers recognized by macOS (such as DualSense and Xbox controllers) are mapped to a Switch Pro Controller. PlayStation and Xbox face buttons map by position, so each one sits where the game's prompt shows it: the right button is A, the bottom B, the top X and the left Y (Circle / Cross / Triangle / Square; Xbox B / A / Y / X). Nintendo controllers map by label. Key **6** picks the controller type by hand (Xbox or PlayStation: by position, Switch: by label); `TOTK_FACE_BUTTONS=label` maps every controller by label while the type is auto. Rumble and motion require the corresponding features to be exposed by the controller and macOS; not every controller has a gyroscope. Mac keyboard mappings use physical key positions corresponding to a US layout:
@@ -519,6 +530,17 @@ python3.14 build_app.py ~/Games/botw-base.nsp -k ~/keys/prod.keys --update ~/Gam
 - **画面：** 游戏以掌机模式运行，和 Switch 不接底座时一样：1280×720。
 - **着色器：** iPhone 和 iPad 不能在游玩时翻译着色器。App 里没有的着色器变体，对应的绘制会被跳过，所以还没有玩家报告过的地方可能缺少物体。设备会把缺的记进 `shader-list-contribution.txt`（“文件”App › 我的 iPhone › Tears of the Kingdom），玩的时候游戏从不因此打扰你。设备连着打包它的那台 Mac（线连或同一 Wi‑Fi）时，Mac 每 10 分钟检查一次，每多 500 个问一次要不要用 [GitHub Issue](https://github.com/ly05010419/MacNativeGames/issues/new?template=shader-list.yml) 发送（`games/totk/ios/tools/shader_contrib_watch.py`，打包 iOS 版时自动安装；`--no-shader-reminder` 不装，`shader_contrib_watch.py uninstall` 卸掉）；并入[公共着色器清单](docs/shader-list.md)后，下一次打包时所有人就都有了。有 Mac 的话，也可以用 `games/totk/ios/tools/fill_shaders.py` 马上翻译这些变体并推回设备。
 - **内存：** 在 iPhone 14 上游戏占用接近 4 GB，接近手机能给它的上限。在复杂的区域玩几分钟后，手机内存耗尽时 iOS 可能会关掉游戏（iPhone 14 上出现过两次，都在约 8 分钟时）。降低 iOS 上的内存占用是下一步要做的事。
+
+## 本分支说明
+
+这是上游移植的个人构建，跟随 `main` 更新，另带四项自己的改动：
+
+- **HUD 上的 Xbox 按键图标（构建时选用）。** `make -C games/totk romfs-patches PAD_ICONS=xbox` 会把合并 UI 图集里的四张 72×72 面键贴图原地互换，于是画在右侧的提示显示 **B**、下方 **A**、上方 **Y**、左侧 **X** —— 正是 Xbox 手柄上这四个键的位置。布局、图集和所有偏移都不变，也不重新编码。不加 `PAD_ICONS=xbox` 时 overlay 与上游逐字节相同。
+- **快捷键浮层（按键 1）列出完整键盘对照。** 游戏提示写的是 A / B / X / Y，而没有任何地方告诉你那对应 Mac 键盘的 J / K / I / U；浮层同时说明不支持鼠标。
+- **面键按手柄类型分族处理**，做成表（Xbox / PlayStation / Nintendo）而不是二分判断，并且先扫产品类别再扫厂商。8BitDo 手柄在 Switch 模式下报 “Nintendo Switch Pro Controller”、厂商报 “8BitDo”，一遍匹配会判成 Xbox。`TOTK_FACE_BUTTONS=xbox|playstation|nintendo|position|label`。
+- **在片元着色器尚未加载时，不构建边界色变体。** 异步着色器路径下解析管线时着色器可能还没就绪，用它构建边界色变体会解引用空指针。
+
+本机（Mac mini M4，1.0.0）实测：首帧等待 5 ms，113 fps，GPU 6.9 ms。
 
 ## 操作
 
