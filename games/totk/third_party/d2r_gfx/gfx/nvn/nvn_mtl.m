@@ -6458,7 +6458,13 @@ static id<MTLFunction> fs_fn_border(NvShader *fs, int nodepth, NSString **recipe
 }
 /* The fragment function for a border key and its inputs (a draw's samplers, or a recipe); cache_key: its bpatch key. */
 static id<MTLFunction> fs_fn_border_with(NvShader *fs, int nodepth, NSString *bkey, border_in b, NSString **cache_key) {
-    if (!fs || !sh_has_src(fs)) return nil;
+    /* fs->fn 必须已经加载：异步着色器路径下 pso_get 解析管线时片元着色器可能还没就绪，下面
+       newFunctionWithName:fs->fn.name 会解引用空指针（本分支实测 SIGSEGV fault=0，帧 1018）。
+       返回 nil 让调用方回退到素管线，库就绪后再建边界色变体。
+       fs->fn has to be loaded: on the asynchronous shader path a fragment shader may not be ready when pso_get
+       resolves a pipeline, and newFunctionWithName:fs->fn.name then dereferences null (measured here: SIGSEGV with
+       fault=0 at frame 1018). Returning nil falls back to the plain pipeline until the library is there. */
+    if (!fs || !fs->fn || !sh_has_src(fs)) return nil;
     int nd = nodepth && fs->writes_depth;
     NSString *key = nd ? [@"nodepth;" stringByAppendingString:bkey] : bkey;
     if (cache_key) *cache_key = key;

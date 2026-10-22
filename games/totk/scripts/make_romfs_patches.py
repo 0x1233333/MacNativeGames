@@ -82,6 +82,69 @@ MEMBERS = {
 }
 
 
+# Xbox face-button icons. The four face-button prompts are separate 72x72 textures in the combined UI atlas, all with
+# the same mip count and therefore the same data stride, so their pixel data can be exchanged in place: the texture the
+# layout draws at the right then holds the letter B, the bottom one A, the top one Y and the left one X. The layout,
+# the atlas and every offset stay exactly where they were.
+# Nothing is decoded or re-encoded -- the bytes move between identical slots -- so the compressed format never has to be
+# known or reproduced (it is block-compressed, and the GX2 tiling would have to be reproduced to re-encode it).
+ICON_MEMBER = 'timg/__Combined.bntx'
+ICON_SWAP_STRIDE = 0x4000   # consecutive slots in this atlas are 0x4000 apart; verified for all eight key textures
+ICON_SWAP = {   # texture the layout uses -> texture whose pixels it should show instead
+    'Nt_KeyTexA_00': 'Nt_KeyTexB_00',   # drawn on the right  -> show the Xbox B that sits there
+    'Nt_KeyTexB_00': 'Nt_KeyTexA_00',   # drawn at the bottom -> show the Xbox A that sits there
+    'Nt_KeyTexX_00': 'Nt_KeyTexY_00',   # drawn at the top    -> show the Xbox Y that sits there
+    'Nt_KeyTexY_00': 'Nt_KeyTexX_00',   # drawn on the left   -> show the Xbox X that sits there
+}
+
+
+def bntx_texture_data(bntx, wanted):
+    """name -> (width, height, offset of the pixel data inside the BNTX) for the names in `wanted`.
+
+    Neither the name table's record layout nor the texture-info array's base is assumed: a texture info record's name
+    pointer points at that texture's name record, so the record is found by searching for a u32 that points at where the
+    name sits, and the info is 0x60 bytes before it. Width and height come from +0x24 / +0x28 (which name-self-describing
+    textures such as *_72x72 agree with) and the pixel data offset from +0x2A0."""
+    out = {}
+    for name in sorted(wanted):
+        rec = bntx.find(name.encode() + b'\x5e') - 2   # the name record is a u16 length, the name, then two bytes
+        assert rec >= 0, f'{name} is not in {ICON_MEMBER}'
+        pattern, search, found = struct.pack('<I', rec), 0, None
+        while True:
+            i = bntx.find(pattern, search)
+            if i < 0: break
+            info = i - 0x60
+            if info >= 0:
+                w, h = struct.unpack_from('<II', bntx, info + 0x24)
+                if 8 <= w <= 4096 and 8 <= h <= 4096:
+                    found = (w, h, struct.unpack_from('<I', bntx, info + 0x2A0)[0]); break
+            search = i + 1
+        assert found, f'no texture info points at {name}'
+        out[name] = found
+    shapes = {(w, h) for w, h, _ in out.values()}
+    assert len(shapes) == 1, f'face-button icons differ in size: {shapes}'
+    return out
+
+
+def swap_pad_icons(blarc, members):
+    """Exchange the four face-button textures' pixel data; returns the byte ranges touched (for the diff assertion)."""
+    ilo, ihi = members[ICON_MEMBER]
+    atlas = bytes(blarc[ilo:ihi])
+    data = bntx_texture_data(atlas, set(ICON_SWAP) | set(ICON_SWAP.values()))
+    for name, (_, _, off) in data.items():
+        assert ilo + off + ICON_SWAP_STRIDE <= ihi, f'{name} data runs past {ICON_MEMBER}'
+    snapshot = {n: bytes(blarc[ilo + o:ilo + o + ICON_SWAP_STRIDE]) for n, (_, _, o) in data.items()}
+    assert len(set(snapshot.values())) == len(snapshot), 'two face-button icons hold identical pixels; the atlas changed'
+    ranges = []
+    for target, source in ICON_SWAP.items():
+        at = ilo + data[target][2]
+        blarc[at:at + ICON_SWAP_STRIDE] = snapshot[source]
+        ranges.append((at, at + ICON_SWAP_STRIDE))
+    print(json.dumps(dict(status='pass', pad_icons='xbox', swapped=ICON_SWAP, stride=ICON_SWAP_STRIDE,
+                          sizes={n: data[n][:2] for n in ICON_SWAP})))
+    return ranges
+
+
 def patch_capture(blarc, members, frame):
     """Move the capture panes' visibility keys in MEMBERS of the decompressed Common archive `blarc` (a bytearray, with
     `members` from sarc_members) from frame 1.0 to `frame`. Each pane must have the shipping keys (0.0, 0) (1.0, 1); a
@@ -107,6 +170,11 @@ def main():
     parser.add_argument('--output-dir', type=Path, default=root / 'extracted/v0/romfs-patches')
     parser.add_argument('--capture-frame', type=float, default=0.0)
     parser.add_argument('--version', choices=('v0','v112','v121','v143'), default='v0')
+    parser.add_argument('--pad-icons', choices=('switch', 'xbox'), default='switch',
+                        help='xbox: exchange the four face-button icon textures so the letter drawn at each position '
+                             'matches an Xbox pad (B right, A bottom, Y top, X left). The four are 72x72 textures with the '
+                             'same mip count, so their pixel data is exchanged in place and nothing else moves. '
+                             'switch (default) leaves the HUD as the game ships it.')
     parser.add_argument('--aspect', type=str.lower, help='<width>x<height> of a canvas wider (scripts/ultrawide_layout.py) or taller (scripts/tall_layout.py, 16:10) than 16:9: also lay the UI out for it; default output romfs-patches-<width>x<height> (-center with --hud center)')
     parser.add_argument('--hud', choices=('corner', 'center'), default='corner', help='with --aspect: the HUD in the screen corners or in the middle 16:9')
     args = parser.parse_args()
@@ -129,6 +197,7 @@ def main():
     blarc = bytearray(zstd.decompress(raw, zstd_dict=dictionary)); assert len(blarc) == info.decompressed_size
     members = sarc_members(blarc)
     patched = patch_capture(blarc, members, args.capture_frame)
+    icon_ranges = swap_pad_icons(blarc, members) if args.pad_icons == 'xbox' else []
     layout = []
     if args.aspect:
         import importlib.util
@@ -141,7 +210,8 @@ def main():
     assert check == bytes(blarc)
     original = zstd.decompress(raw, zstd_dict=dictionary)
     diff = [i for i in range(len(original)) if original[i] != blarc[i]]
-    assert diff and all(any(lo <= i < hi for lo, hi in (members[m] for m in [*MEMBERS, *layout])) for i in diff), diff[:20]
+    allowed = [members[m] for m in [*MEMBERS, *layout]] + icon_ranges
+    assert diff and all(any(lo <= i < hi for lo, hi in allowed) for i in diff), diff[:20]
     data = zstd.compress(bytes(blarc), level=19, zstd_dict=dictionary)
     assert zstd.get_frame_info(data).dictionary_id == info.dictionary_id and zstd.get_frame_info(data).decompressed_size == len(blarc)
     target = out_dir / ARCHIVE; target.parent.mkdir(parents=True, exist_ok=True); target.write_bytes(data)

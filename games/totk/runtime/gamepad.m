@@ -476,9 +476,16 @@ static void attach_gamepad(GCController *controller) {
         (void)changed; (void)element;
         refresh_gamepads();
     };
-    fprintf(stderr, "[totk-input] native gamepad connected: %s (%s), face buttons by %s\n",
-            (controller.vendorName ?: @"unknown").UTF8String,
-            (controller.productCategory ?: @"unknown").UTF8String, face_by_position(controller) ? "position" : "label");
+    {
+        const char *vendor = (controller.vendorName ?: @"unknown").UTF8String;
+        const char *category = (controller.productCategory ?: @"unknown").UTF8String;
+        const char *e = getenv("TOTK_FACE_BUTTONS");
+        /* Logged on connect so a misdetected controller is visible without a debugger: which family it was taken for,
+           which rule that family uses, and the two strings the decision came from. */
+        fprintf(stderr, "[totk-input] native gamepad connected: %s (%s), family %s, face buttons by %s%s\n",
+                vendor, category, gamepad_family_id(category, vendor), face_by_position(controller) ? "position" : "label",
+                e && *e ? [[NSString stringWithFormat:@" (TOTK_FACE_BUTTONS=%s)", e] UTF8String] : "");
+    }
     runtime_feedback_attach(controller);
     refresh_gamepads();
 }

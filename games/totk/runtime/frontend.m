@@ -205,6 +205,26 @@ static NSString *shortcut_text(void){
  return [NSString stringWithFormat:@(TOTK_UI("快捷键说明\n1  提示：全部 → 只显示 FPS → 隐藏\n2  补帧：当前 %@（按键切换）\n3  画质：当前 %@（按键切换）\n4  画面比例：当前 %@（按键切换）\n5  边缘平滑（MetalFX 时间性）：%@\n6  手柄类型：当前 %@（按键切换）\n7  鼠标操作：当前 %@（按键切换）","Shortcuts\n1  Overlays: all → FPS only → off\n2  Interpolation: %@ (current; press to cycle)\n3  Picture: %@ (current; press to cycle)\n4  Aspect ratio: %@ (current; press to cycle)\n5  Edge smoothing (MetalFX Temporal): %@\n6  Controller type: %@ (current; press to cycle)\n7  Mouse: %@ (current; press to switch)")),[NSString stringWithUTF8String:interp],picture,shape,
   taa_enabled()?@(TOTK_UI("开","on")):@(TOTK_UI("关","off")),pad_type_text(),
   runtime_mouse_enabled()?@(TOTK_UI("开（视角、按键，⌘Tab 释放指针）","on (camera, buttons; Command-Tab frees the pointer)")):@(TOTK_UI("关","off"))];
+ /* 键盘是这个移植除真实手柄外唯一的输入方式，而游戏自己的提示写的是 A / B / X / Y。这里把对照列出来：
+    游戏里没有任何地方告诉玩家那对应 J / K / I / U。
+    The keyboard is the only input besides a real controller and the game's prompts say A / B / X / Y; nothing in the
+    game says those are J / K / I / U, so the mapping is listed here. */
+ NSString *keys=@(TOTK_UI(
+  "\n\n键盘对照（游戏提示 → 键盘）\n"
+  "WASD 左摇杆    方向键 右摇杆\n"
+  "J=A  K/空格=B  I=X跳  U=Y攻击\n"
+  "Q=L  E=R  Option=ZL  Shift=ZR\n"
+  "F/T/H/G 十字键左/上/右/下\n"
+  "Z=C 按左摇杆  C 按右摇杆\n"
+  "Return=+菜单  Tab/Esc=−地图",
+  "\n\nKeyboard (game prompt = your key)\n"
+  "WASD left stick    arrows right stick\n"
+  "J=A  K/Space=B  I=X jump  U=Y attack\n"
+  "Q=L  E=R  Option=ZL  Shift=ZR\n"
+  "F/T/H/G d-pad left/up/right/down\n"
+  "Z=C press left stick  C press right stick\n"
+  "Return=+ menu  Tab/Esc=− map"));
+ return [base stringByAppendingString:keys];
 }
 -(instancetype)initWithFrame:(NSRect)frame{if((self=[super initWithFrame:frame])){int compact=hud_compact();self.wantsLayer=YES;self.layer.backgroundColor=[NSColor colorWithCalibratedWhite:0.04 alpha:compact?0.72:0.86].CGColor;self.layer.cornerRadius=compact?7:14;self.layer.borderWidth=1;self.layer.borderColor=[NSColor colorWithCalibratedWhite:1 alpha:compact?0.14:0.2].CGColor;
  self.label=[NSTextField labelWithString:shortcut_text()];self.label.font=[NSFont systemFontOfSize:17 weight:NSFontWeightMedium];self.label.textColor=NSColor.whiteColor;self.label.alignment=NSTextAlignmentCenter;self.label.maximumNumberOfLines=0;self.label.lineBreakMode=NSLineBreakByWordWrapping;self.label.frame=NSInsetRect(self.bounds,20,18);self.label.autoresizingMask=NSViewWidthSizable|NSViewHeightSizable;[self addSubview:self.label];
@@ -230,7 +250,7 @@ static NSString *shortcut_text(void){
 -(void)layout{[super layout];[self position];}
 -(void)position{if(!self.superview)return;NSRect f,in;
  if(hud_compact()){CGFloat w=self.textSize.width+16,h=self.textSize.height+10,m=10;f=NSMakeRect(floor(self.superview.bounds.size.width-w-m),floor(self.superview.bounds.size.height-h-m),w,h);in=NSMakeRect(8,5,self.textSize.width,self.textSize.height);}
- else{CGFloat w=MIN(560,MAX(280,self.superview.bounds.size.width-40)),h=240;f=NSMakeRect(floor((self.superview.bounds.size.width-w)/2),floor((self.superview.bounds.size.height-h)/2),w,h);in=NSInsetRect(NSMakeRect(0,0,w,h),20,18);}
+ else{CGFloat w=MIN(620,MAX(280,self.superview.bounds.size.width-40)),h=404;f=NSMakeRect(floor((self.superview.bounds.size.width-w)/2),floor((self.superview.bounds.size.height-h)/2),w,h);in=NSInsetRect(NSMakeRect(0,0,w,h),20,18);}
  if(!NSEqualRects(self.frame,f))self.frame=f;self.label.frame=in;}
 @end
 /* The live FPS in the menu bar: a menu of the game's own, after its app menu on the left, whose title is the frame rate
