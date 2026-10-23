@@ -202,7 +202,7 @@ static NSString *shortcut_text(void){
  int step=runtime_aspect_step();float ar=runtime_aspect_now();
  NSString *ratio=!ar?@"16:9":fabsf(ar*9-21)<0.05f?@"21:9":[NSString stringWithFormat:@"%.2f:1",ar];
  NSString *shape=step==1?[NSString stringWithFormat:@(TOTK_UI("适配窗口 %@","fit to window %@")),ratio]:step==2?ratio:@"16:9";
- return [NSString stringWithFormat:@(TOTK_UI("快捷键说明\n1  提示：全部 → 只显示 FPS → 隐藏\n2  补帧：当前 %@（按键切换）\n3  画质：当前 %@（按键切换）\n4  画面比例：当前 %@（按键切换）\n5  边缘平滑（MetalFX 时间性）：%@\n6  手柄类型：当前 %@（按键切换）\n7  鼠标操作：当前 %@（按键切换）","Shortcuts\n1  Overlays: all → FPS only → off\n2  Interpolation: %@ (current; press to cycle)\n3  Picture: %@ (current; press to cycle)\n4  Aspect ratio: %@ (current; press to cycle)\n5  Edge smoothing (MetalFX Temporal): %@\n6  Controller type: %@ (current; press to cycle)\n7  Mouse: %@ (current; press to switch)")),[NSString stringWithUTF8String:interp],picture,shape,
+ NSString *base=[NSString stringWithFormat:@(TOTK_UI("快捷键说明\n1  提示：全部 → 只显示 FPS → 隐藏\n2  补帧：当前 %@（按键切换）\n3  画质：当前 %@（按键切换）\n4  画面比例：当前 %@（按键切换）\n5  边缘平滑（MetalFX 时间性）：%@\n6  手柄类型：当前 %@（按键切换）\n7  鼠标操作：当前 %@（按键切换）","Shortcuts\n1  Overlays: all → FPS only → off\n2  Interpolation: %@ (current; press to cycle)\n3  Picture: %@ (current; press to cycle)\n4  Aspect ratio: %@ (current; press to cycle)\n5  Edge smoothing (MetalFX Temporal): %@\n6  Controller type: %@ (current; press to cycle)\n7  Mouse: %@ (current; press to switch)")),[NSString stringWithUTF8String:interp],picture,shape,
   taa_enabled()?@(TOTK_UI("开","on")):@(TOTK_UI("关","off")),pad_type_text(),
   runtime_mouse_enabled()?@(TOTK_UI("开（视角、按键，⌘Tab 释放指针）","on (camera, buttons; Command-Tab frees the pointer)")):@(TOTK_UI("关","off"))];
  /* 键盘是这个移植除真实手柄外唯一的输入方式，而游戏自己的提示写的是 A / B / X / Y。这里把对照列出来：

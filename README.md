@@ -230,14 +230,21 @@ Version 1.4.3 has been played on an **iPhone 14 (iOS 26.6.1)** and an **iPad wit
 
 ## This branch
 
-This is a personal build of the upstream port, kept in step with `main`. It carries four changes of its own on top:
+This is a personal build of the upstream port, kept in step with `main` — currently `a988b5e`, with the whole renderer,
+pipeline-archive, async-shader, iOS and packaging work that upstream has, rather than older implementations of the same
+ideas. Three changes of its own sit on top:
 
 - **Xbox button icons on the HUD (build time).** `make -C games/totk romfs-patches PAD_ICONS=xbox` exchanges the four 72x72 face-button textures of the combined UI atlas in place, so the prompt drawn on the right shows **B**, at the bottom **A**, at the top **Y** and on the left **X** — where an Xbox pad puts them. The layout, the atlas and every offset stay unchanged and nothing is re-encoded. Without `PAD_ICONS=xbox` the overlay is byte-identical to upstream's.
-- **The shortcut panel (key 1) lists the whole keyboard mapping.** The game's prompts say A / B / X / Y and nothing says those are J / K / I / U on a Mac keyboard; the panel also states that there is no mouse support.
-- **Face buttons per controller family**, as a table (Xbox / PlayStation / Nintendo) instead of a two-way test, with the product category scanned before the vendor. An 8BitDo pad in Switch mode reports "Nintendo Switch Pro Controller" with vendor "8BitDo", which a one-pass match classifies as Xbox. `TOTK_FACE_BUTTONS=xbox|playstation|nintendo|position|label`.
-- **A guard before the border-colour shader is built from an unloaded fragment shader.** On the asynchronous shader path a shader may not be ready when a pipeline is resolved, and building the border variant from it dereferenced null.
+- **The shortcut panel (key 1) lists the whole keyboard mapping.** The game's prompts say A / B / X / Y and nothing says those are J / K / I / U on a Mac keyboard.
+- **A guard before the border-colour shader is built from an unloaded fragment shader.** On the asynchronous shader path a shader may not be ready when a pipeline is resolved, and building the border variant from it dereferenced null (measured here: SIGSEGV with fault=0 at frame 1018).
 
-Measured here on a Mac mini M4 with 1.0.0: first frame after 5 ms, 113 fps, GPU 6.9 ms.
+Dropped in favour of upstream: the per-family face-button table this branch used to carry. Upstream's two-way test
+already reads a controller by position unless either the product category or the vendor names Nintendo, which is what
+the 8BitDo case needs, and upstream now has `GAMEPAD_TYPE_*` with key 6 to force the type and a saved setting — more
+than the environment variable it replaced.
+
+Measured here on a Mac mini M4 with 1.0.0 against a 33,298-shader seed: first frame 5-12 ms, 112 fps with the machine at
+load 10-16, no new render pipeline compiled during play.
 
 ## Controls
 
@@ -533,14 +540,17 @@ python3.14 build_app.py ~/Games/botw-base.nsp -k ~/keys/prod.keys --update ~/Gam
 
 ## 本分支说明
 
-这是上游移植的个人构建，跟随 `main` 更新，另带四项自己的改动：
+这是上游移植的个人构建，跟随 `main` —— 现在是 `a988b5e`，整套渲染器、管线归档、异步着色器、iOS 与打包工作都用上游的，
+而不是自己那套同类实现。另有三项自己的改动叠在上面：
 
 - **HUD 上的 Xbox 按键图标（构建时选用）。** `make -C games/totk romfs-patches PAD_ICONS=xbox` 会把合并 UI 图集里的四张 72×72 面键贴图原地互换，于是画在右侧的提示显示 **B**、下方 **A**、上方 **Y**、左侧 **X** —— 正是 Xbox 手柄上这四个键的位置。布局、图集和所有偏移都不变，也不重新编码。不加 `PAD_ICONS=xbox` 时 overlay 与上游逐字节相同。
-- **快捷键浮层（按键 1）列出完整键盘对照。** 游戏提示写的是 A / B / X / Y，而没有任何地方告诉你那对应 Mac 键盘的 J / K / I / U；浮层同时说明不支持鼠标。
-- **面键按手柄类型分族处理**，做成表（Xbox / PlayStation / Nintendo）而不是二分判断，并且先扫产品类别再扫厂商。8BitDo 手柄在 Switch 模式下报 “Nintendo Switch Pro Controller”、厂商报 “8BitDo”，一遍匹配会判成 Xbox。`TOTK_FACE_BUTTONS=xbox|playstation|nintendo|position|label`。
-- **在片元着色器尚未加载时，不构建边界色变体。** 异步着色器路径下解析管线时着色器可能还没就绪，用它构建边界色变体会解引用空指针。
+- **快捷键浮层（按键 1）列出完整键盘对照。** 游戏提示写的是 A / B / X / Y，而没有任何地方告诉你那对应 Mac 键盘的 J / K / I / U。
+- **在片元着色器尚未加载时，不构建边界色变体。** 异步着色器路径下解析管线时着色器可能还没就绪，用它构建边界色变体会解引用空指针（本机实测：SIGSEGV fault=0，帧 1018）。
 
-本机（Mac mini M4，1.0.0）实测：首帧等待 5 ms，113 fps，GPU 6.9 ms。
+让位给上游的：本分支原先自带的面键分族表。上游那个二分判断本来就是"除非产品类别或厂商名里有 Nintendo，否则按位置映射"，
+8BitDo 那种情形它处理得对；而且上游现在有 `GAMEPAD_TYPE_*` 加按键 6 强制指定并存盘，比被它取代的环境变量更强。
+
+本机（Mac mini M4，1.0.0，33,298 个着色器种子）实测：首帧 5–12 ms，负载 10–16 下 112 fps，游玩中未现编任何渲染管线。
 
 ## 操作
 
