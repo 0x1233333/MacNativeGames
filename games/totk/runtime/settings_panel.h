@@ -190,6 +190,14 @@ static NSArray<TOTKSettingRow *> *settings_rows(void) {
  [rows addObject:settings_feedback_row(0)];
  [rows addObject:settings_gain_row()];
  [rows addObject:settings_feedback_row(1)];
+ /* 键盘是这个移植除真实手柄外唯一的输入方式，而游戏自己的提示写的是 A / B / X / Y —— 游戏里没有任何地方
+    告诉玩家那对应键盘的哪些键。列在这里，随面板一起出现。
+    The keyboard is the only input besides a real controller and the game's prompts say A / B / X / Y; nothing in the
+    game says which keys those are. Listed here, where the panel shows it. */
+ [rows addObject:settings_fixed(settings_text("键盘：面键 A / B / X / Y","Keyboard: face buttons A / B / X / Y"),@"J  /  K · 空格  /  I  /  U")];
+ [rows addObject:settings_fixed(settings_text("键盘：左 / 右摇杆","Keyboard: left / right stick"),@"WASD  /  ← ↑ ↓ →")];
+ [rows addObject:settings_fixed(settings_text("键盘：L / R，ZL / ZR","Keyboard: L / R, ZL / ZR"),@"Q / E    Option / Shift")];
+ [rows addObject:settings_fixed(settings_text("键盘：十字键，+ / −","Keyboard: d-pad, + / −"),@"F T H G    Return / Tab↔Esc")];
  return rows;
 }
 

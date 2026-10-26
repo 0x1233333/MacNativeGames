@@ -76,6 +76,23 @@ Update history:
 
 **Stuttering when you first start playing or enter a new scene is expected while new shaders compile—don't be surprised.** Performance typically improves as the cache warms up, and every shader the [shared list](#lets-maintain-the-shader-list-together-no-more-stutter) gains is one nobody stutters on again.
 
+## This branch
+
+This is a personal build of the upstream port, kept in step with `main` — currently `1340bee`, with the whole renderer,
+pipeline-archive, async-shader, settings-panel, iOS and packaging work that upstream has, rather than older
+implementations of the same ideas. Three changes of its own sit on top:
+
+- **Xbox button icons on the HUD (build time).** `make -C games/totk romfs-patches PAD_ICONS=xbox` exchanges the four 72x72 face-button textures of the combined UI atlas in place, so the prompt drawn on the right shows **B**, at the bottom **A**, at the top **Y** and on the left **X** — where an Xbox pad puts them. The layout, the atlas and every offset stay unchanged and nothing is re-encoded. Without `PAD_ICONS=xbox` the overlay is byte-identical to upstream's.
+- **The settings panel (key 1) lists the keyboard mapping.** The game's prompts say A / B / X / Y and nothing says those are J / K / I / U on a Mac keyboard; four fixed rows at the bottom of the panel give the face buttons, both sticks, L / R and ZL / ZR, the d-pad and + / −.
+- **A guard before the border-colour shader is built from an unloaded fragment shader.** On the asynchronous shader path a shader may not be ready when a pipeline is resolved, and building the border variant from it dereferenced null (measured here: SIGSEGV with fault=0 at frame 1018).
+
+Handed back to upstream: the per-family face-button table (upstream's two-way test already reads the 8BitDo case
+correctly and it now has `GAMEPAD_TYPE_*` with key 6 and a saved setting), and the standalone shortcut panel (upstream
+replaced it with the settings panel, which also reports the controller type and the mouse).
+
+Measured on a Mac mini M4 with 1.0.0 and a 30,996-shader seed: first frame 5 ms, 17,233 render pipelines warmed before
+the first frame, no render pipeline compiled during play.
+
 ## Install and play
 
 Everything from building the app to playing is in **[docs/install.md](docs/install.md)**. The recommended way is to hand it to an AI assistant (see the top of this page) rather than run the steps yourself:
@@ -178,6 +195,20 @@ MIT (see [LICENSE](LICENSE)). Third-party code keeps its own license: [THIRD_PAR
 | 10 月 17 日 | Mac | 支持 1.0.0 和 1.1.2；当时还没有首次启动着色器预热，进入新场景可能卡顿 |
 
 **第一次进入游戏或新场景时，新着色器的编译可能造成卡顿，这是预期现象，不必惊讶。** 随着着色器缓存逐步预热，表现通常会改善；[公共清单](#让我们一起维护着色器清单游戏不再卡顿)每多一个着色器，就少一处卡顿。
+
+## 本分支说明
+
+这是上游移植的个人构建，跟随 `main` —— 现在是 `1340bee`，整套渲染器、管线归档、异步着色器、设置面板、iOS 与打包工作都用上游的，
+而不是自己那套同类实现。另有三项自己的改动叠在上面：
+
+- **HUD 上的 Xbox 按键图标（构建时选用）。** `make -C games/totk romfs-patches PAD_ICONS=xbox` 会把合并 UI 图集里的四张 72×72 面键贴图原地互换，于是画在右侧的提示显示 **B**、下方 **A**、上方 **Y**、左侧 **X** —— 正是 Xbox 手柄上这四个键的位置。布局、图集和所有偏移都不变，也不重新编码。不加 `PAD_ICONS=xbox` 时 overlay 与上游逐字节相同。
+- **设置面板（按键 1）里列出键盘对照。** 游戏提示写的是 A / B / X / Y，而没有任何地方告诉你那对应 Mac 键盘的 J / K / I / U；面板末尾四行固定行给出面键、两个摇杆、L / R 与 ZL / ZR、十字键与 + / −。
+- **在片元着色器尚未加载时，不构建边界色变体。** 异步着色器路径下解析管线时着色器可能还没就绪，用它构建边界色变体会解引用空指针（本机实测：SIGSEGV fault=0，帧 1018）。
+
+交还上游的：面键分族表（上游那个二分判断本来就处理得对 8BitDo，而且它现在有 `GAMEPAD_TYPE_*` 加按键 6 并存盘），
+以及独立的快捷键浮层（上游换成了设置面板，还顺带显示手柄类型与鼠标状态）。
+
+本机（Mac mini M4，1.0.0，30,996 个着色器种子）实测：首帧 5 ms，首帧前预建 17,233 条渲染管线，游玩中未现编渲染管线。
 
 ## 安装与游玩
 
