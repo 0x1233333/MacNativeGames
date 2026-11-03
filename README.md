@@ -105,6 +105,20 @@ The [shared shader list](docs/shader-list.md) now holds **14,794 shader variants
   migrates them. Mods in `mods/v112` are not loaded any more: put the mods for the version you build in its own
   folder ([mods.md](docs/mods.md)).
 
+## This branch
+
+A personal build of the upstream port, kept in step with `main` — currently `3ac015c3`, carrying upstream's renderer,
+pipeline archive, asynchronous replay and preemption, key-binding page, VR, iOS and packaging work rather than older
+implementations of the same ideas. Two changes of its own sit on top:
+
+- **Xbox button icons on the HUD (build time).** `make -C games/totk romfs-patches PAD_ICONS=xbox` exchanges the four 72x72 face-button textures of the combined UI atlas in place, so the prompt drawn on the right shows **B**, at the bottom **A**, at the top **Y** and on the left **X** — where an Xbox pad puts them. The layout, the atlas and every offset stay unchanged and nothing is re-encoded. Without `PAD_ICONS=xbox` the overlay is byte-identical to upstream's.
+- **A guard before the border-colour shader is built from an unloaded fragment shader.** On the asynchronous shader path a shader may not be ready when a pipeline is resolved, and `newFunctionWithName:fs->fn.name` then dereferences null (measured here: SIGSEGV with fault=0 at frame 1018).
+
+Retired, because upstream now does it better: this branch's keyboard-mapping rows in the settings panel. Upstream's key
+bindings page lists every action with its keys and rebinds them, and the defaults changed with it (A is E / Return, B is
+Shift / Backspace, X is Space, and the mouse buttons are bound too), so the rows this branch carried had become both
+redundant and wrong.
+
 ## Install and play
 
 Everything from building the app to playing is in **[docs/install.md](docs/install.md)**. The recommended way is to hand it to an AI assistant with the [install skill](.claude/skills/install-zelda/SKILL.md) (see the top of this page) rather than run the steps yourself:
@@ -236,6 +250,17 @@ Apple、Mac、iPhone、iPad、Apple Vision Pro 和 Metal 是 Apple Inc. 的商�
   1.1.2 的更新包：请换成 1.2.1 或 1.4.3 的更新包，用同一个 `-o` 重新打包（[换游戏版本](docs/install.zh-CN.md)）。存档还在原处
   （`TOTK/profile`）；新版本第一次启动前，App 会先在旁边备份一份，1.2.1 直接读 1.1.2 的存档，1.4.3 会自动迁移。放在
   `mods/v112` 里的模组不会再加载：把对应版本的模组放进该版本自己的文件夹（[mods.md](docs/mods.md)）。
+
+## 本分支说明
+
+上游移植的个人构建，跟随 `main` —— 现在是 `3ac015c3`，整套渲染器、管线归档、异步重放与抢占、按键绑定页、VR、iOS 与打包工作
+都用上游的，而不是自己那套同类实现。另有两项自己的改动叠在上面：
+
+- **HUD 上的 Xbox 按键图标（构建时选用）。** `make -C games/totk romfs-patches PAD_ICONS=xbox` 会把合并 UI 图集里的四张 72×72 面键贴图原地互换，于是画在右侧的提示显示 **B**、下方 **A**、上方 **Y**、左侧 **X** —— 正是 Xbox 手柄上这四个键的位置。布局、图集和所有偏移都不变，也不重新编码。不加 `PAD_ICONS=xbox` 时 overlay 与上游逐字节相同。
+- **在片元着色器尚未加载时，不构建边界色变体。** 异步着色器路径下解析管线时着色器可能还没就绪，`newFunctionWithName:fs->fn.name` 会解引用空指针（本机实测：SIGSEGV fault=0，帧 1018）。
+
+已退役、让位给上游的：本分支在设置面板里加的键盘对照行。上游的按键绑定页列出每个动作及其按键并可改键，默认键位也随之
+改了（A 是 E / Return，B 是 Shift / Backspace，X 是空格，鼠标键也绑上了），所以那几行既冗余又已经不对了。
 
 ## 安装与游玩
 

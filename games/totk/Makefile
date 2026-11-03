@@ -134,7 +134,7 @@ probe-romfs: runtime
 # HeapDef sizes a true-2K output needs (TOTK_OUTPUT_RES; other sizes: make romfs-patches OUTPUT_RES=<w>x<h>).
 OUTPUT_RES ?= 2560x1440
 romfs-patches:
-	"$(PY)" scripts/make_romfs_patches.py
+	"$(PY)" scripts/make_romfs_patches.py $(if $(PAD_ICONS),--pad-icons $(PAD_ICONS))
 	"$(PY)" scripts/make_output_res_overlay.py $(OUTPUT_RES)
 
 verify-boot: runtime
